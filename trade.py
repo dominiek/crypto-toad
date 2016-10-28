@@ -178,7 +178,7 @@ def perform_sells(pair, symbol):
     logging.warning('Attempting to place sell orders')
     for bet in BETS:
         rate = BASE_LOWEST_ASK * bet['sell_markup_factor']
-        amount = bet['buy_amount']
+        amount = bet['buy_amount'] * 0.95 # Account for Poloniex markups
         success = False
         while success == False:
             logging.warning('Attempting to place sell_order with BASE_LOWEST_ASK={}, rate={}, amount={}'.format(BASE_LOWEST_ASK, str(rate), str(amount)))
