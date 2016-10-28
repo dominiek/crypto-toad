@@ -5,7 +5,7 @@ import logging
 import time
 import json
 import math
-
+import sys
 
 # Only play when price meets these bounds:
 BUY_MAXIMUM_ASK = 3.0
@@ -13,12 +13,12 @@ BUY_MINUMUM_ASK = 0.0000000001
 
 BETS = [
     {
-        'btc_budget': 0.01,
-        'buy_markup_factor': 2,
+        'btc_budget': 1.4,
+        'buy_markup_factor': 1.8,
         'sell_markup_factor': 100
     },
     {
-        'btc_budget': 0.01,
+        'btc_budget': 1.4,
         'buy_markup_factor': 1.5,
         'sell_markup_factor': 20
     }
@@ -45,6 +45,8 @@ headers = {
     'x-requested-with': 'XMLHttpRequest',
     'cookie': COOKIE_HEADER
 }
+
+sys.setrecursionlimit(1500)
 
 class TradeError(Exception):
     pass
@@ -145,12 +147,12 @@ def perform_buys(pair):
     global BASE_LOWEST_ASK
     logging.warning('Attempting to place buy orders')
     ticker = None
-    try:
-        ticker = get_ticker(pair)
-    except NoTickerError as e:
-        logging.warning('No ticker yet ({}), waiting for 1 second to try again'.format(e.message))
+    while ticker == None:
+        try:
+            ticker = get_ticker(pair)
+        except NoTickerError as e:
+            logging.warning('No ticker yet ({}), waiting for 1 second to try again'.format(e.message))
         time.sleep(1)
-        return perform_buys(pair)
     try:
         check_ticker_buy_sanity(ticker)
     except NoSaneTickerError as e:
