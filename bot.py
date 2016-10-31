@@ -31,7 +31,6 @@ class Bot:
             self.bot.sendMessage(user_id, 'Detected ticker on Poloniex! Symbol: {}, Url: {}'.format(ticker, url))
 
     def _on_message(self, msg):
-        text = msg['text']
         user_id = msg['from']['id']
         self.db[str(user_id)] = msg['from']
         self.db.sync()
