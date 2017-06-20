@@ -52,14 +52,15 @@ def post_is_interesting(post, forum):
         'new listing', 'new pre-sale', 'new coin',
         'now trading', 'now listing', 'now selling', 'went live',
         'coin added', 'symbol added', 'market added', 'new market',
-        'new coins', 'coins added', 'will add', 'start selling'
+        'new coins', 'coins added', 'will add', 'start selling', 'token sale',
+        'coin sale'
     ]
     for keyword in exact_keywords:
         if keyword in title:
             return True
     combo_keywords = [
         'listing', 'ico', 'adding', 'listed', 'added', 'listings',
-        'symbols', 'trading',
+        'symbols', 'trading', 'upcoming', 'soon', 'coming'
     ]
     for exchange in EXCHANGES:
         for keyword in combo_keywords:
