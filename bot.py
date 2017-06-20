@@ -65,7 +65,7 @@ def diff_posts(old_posts, new_posts):
     return new
 
 def get_reddit_rumors(forum):
-    res = requests.get('https://www.reddit.com/r/{}/new/.json'.format(forum))
+    res = requests.get('https://www.reddit.com/r/{}/new/.json'.format(forum), headers = {'User-agent': 'CryptoToad v0.1'})
     result = json.loads(res.text)
     if result.has_key('error') and result['error']:
         print('API error: ', result)
@@ -141,7 +141,9 @@ class Bot:
             info = DEBUG_INFO['exchanges'][exchange]
             total_tickers += len(info['tickers'])
             exchange_names.append(exchange_info['name'])
-        text = 'Hi there, I am currently tracking {} tickers in real-time on {} and {} as well as rumors on Reddit.\n'.format(total_tickers, ', '.join(exchange_names[0:-1]), exchange_names[-1])
+        text = ''
+        if len(exchange_names) > 0:
+            text = 'Hi there, I am currently tracking {} tickers in real-time on {} and {} as well as rumors on Reddit.\n'.format(total_tickers, ', '.join(exchange_names[0:-1]), exchange_names[-1])
         text += '\nI will notify you instantly when I detect a new ticker!'
         self.bot.sendMessage(user_id, text)
 
