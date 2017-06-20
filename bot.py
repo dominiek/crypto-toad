@@ -221,7 +221,7 @@ class RedditRumorTracker:
     def check(self):
         posts = get_reddit_rumors(self.forum)
         new = diff_posts(self.posts, posts)
-        logging.info('Posts compare {} {} {}', len(self.posts), len(posts), len(new))
+        logging.info('Posts compare {} {} {}'.format(len(self.posts), len(posts), len(new)))
         DEBUG_INFO['reddit_forums'][self.forum] = {
             'last_check': time.time(),
             'posts': posts
