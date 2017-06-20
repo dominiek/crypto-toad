@@ -6,6 +6,7 @@ import sys
 import time
 import telepot
 import shelve
+import logging
 
 DB_FILE = 'data/bot.shelve.db'
 EXCHANGES = {
@@ -34,6 +35,15 @@ DEBUG_INFO = {
     'reddit_forums': {},
     'uptime': time.time()
 }
+
+root = logging.getLogger()
+root.setLevel(logging.DEBUG)
+
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+root.addHandler(ch)
 
 def get_tickers(exchange):
     if exchange == 'poloniex':
@@ -68,7 +78,7 @@ def get_reddit_rumors(forum):
     res = requests.get('https://www.reddit.com/r/{}/new/.json'.format(forum), headers = {'User-agent': 'CryptoToad v0.1'})
     result = json.loads(res.text)
     if result.has_key('error') and result['error']:
-        print('API error: ', result)
+        logging.warning('API error', result)
         raise Exception('API Error: {}'.format(result['message']))
     return map(lambda x: x['data'], result['data']['children'])
 
@@ -162,7 +172,7 @@ class TickerTracker:
             'tickers': new_tickers
         }
         if len(new) > 0:
-            print('New tickers on {}!'.format(self.exchange), new)
+            logging.info('New tickers on {}!'.format(self.exchange), new)
             for ticker in new:
                 self.bot.notify_ticker(ticker, EXCHANGES[self.exchange])
             self.tickers = new_tickers
@@ -198,13 +208,14 @@ class RedditRumorTracker:
             for post in new:
                 if not post_is_interesting(post, self.forum):
                     continue
-                print('New rumor on {}!'.format(self.forum))
+                logging.info('New rumor on {}!'.format(self.forum))
                 self.bot.notify_post(post, self.forum)
             self.posts = posts
             return True
         return False
 
 def run():
+    logging.info('Initializing bot')
     bot = Bot(os.getenv('TELEGRAM_TOKEN'))
     trackers = {}
     for exchange in EXCHANGES:
@@ -216,10 +227,11 @@ def run():
             if 'reddit' in item and (i % 10) != 0:
                 continue
             try:
+                logging.info('Checking {} to see what\'s new'.format(item))
                 trackers[item].check()
             except:
-                print('Oops, received a little error when checking {} ({}), ignoring'.format(item, sys.exc_info()[0]))
+                logging.warning('Oops, received a little error when checking {} ({}), ignoring'.format(item, sys.exc_info()[0]))
         i+= 1
-        time.sleep(3)
+        time.sleep(5)
 
 run()
