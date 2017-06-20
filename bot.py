@@ -123,7 +123,7 @@ class Bot:
             self.bot.sendMessage(user_id, 'Detected ticker on {}! Symbol: {}, Url: {}'.format(exchange['name'], ticker, url), reply_markup=DEFAULT_REPLY_MARKUP)
 
     def notify_post(self, post, forum):
-        text = 'New potential rumor on r/{}:\n\n{}'.format(forum, 'https://reddit.com{}'.format(post['permalink']))
+        text = 'New potential rumor on r/{}:\n\n{}'.format(forum,  'https://reddit.com{}'.format(post['permalink'].encode('utf-8')))
         for user_id in self.db:
             self.bot.sendMessage(user_id, text, reply_markup=DEFAULT_REPLY_MARKUP)
 
@@ -158,9 +158,8 @@ class Bot:
                 text = '\n'
                 for post in reversed(info['posts'][0:10]):
                     duration = int(round((time.time() - float(post['created_utc'])) / 60))
-                    text = '{} minutes ago, {}\n: {}\n\n'.format(duration, post['title'], 'https://reddit.com{}'.format(post['permalink']))
-                    self.bot.sendMessage(user_id, text)
-            self.bot.sendMessage(user_id, '', reply_markup=DEFAULT_REPLY_MARKUP)
+                    text = '{} minutes ago, {}\n: {}\n\n'.format(duration, post['title'].encode('utf-8'), 'https://reddit.com{}'.format(post['permalink'].encode('utf-8')))
+                    self.bot.sendMessage(user_id, text, reply_markup=DEFAULT_REPLY_MARKUP)
             return
         if len(command) > 0 and command[0] == '/tickers':
             self.bot.sendMessage(user_id, 'I know about the following tickers:')
@@ -221,7 +220,6 @@ class RedditRumorTracker:
     def check(self):
         posts = get_reddit_rumors(self.forum)
         new = diff_posts(self.posts, posts)
-        logging.info('Posts compare {} {} {}'.format(len(self.posts), len(posts), len(new)))
         DEBUG_INFO['reddit_forums'][self.forum] = {
             'last_check': time.time(),
             'posts': posts
