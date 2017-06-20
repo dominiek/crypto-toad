@@ -221,17 +221,18 @@ class RedditRumorTracker:
     def check(self):
         posts = get_reddit_rumors(self.forum)
         new = diff_posts(self.posts, posts)
+        logging.info('Posts compare {} {} {}', len(self.posts), len(posts), len(new))
         DEBUG_INFO['reddit_forums'][self.forum] = {
             'last_check': time.time(),
             'posts': posts
         }
+        self.posts = posts
         if len(new) > 0:
             for post in new:
                 if not post_is_interesting(post, self.forum):
                     continue
                 logging.info('New rumor on {}!'.format(self.forum))
                 self.bot.notify_post(post, self.forum)
-            self.posts = posts
             return True
         return False
 
