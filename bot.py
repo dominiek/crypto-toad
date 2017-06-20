@@ -35,6 +35,7 @@ DEBUG_INFO = {
     'reddit_forums': {},
     'uptime': time.time()
 }
+DEFAULT_REPLY_MARKUP = {'keyboard': [['Rumors', 'Help']], 'resize_keyboard': True}
 
 root = logging.getLogger()
 root.setLevel(logging.DEBUG)
@@ -45,18 +46,39 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 root.addHandler(ch)
 
+def post_is_interesting(post, forum):
+    title = post.get('title', '').lower()
+    exact_keywords = [
+        'new listing', 'new pre-sale', 'new coin',
+        'now trading', 'now listing', 'now selling', 'went live',
+        'coin added', 'symbol added', 'market added', 'new market',
+        'new coins', 'coins added', 'will add', 'start selling'
+    ]
+    for keyword in exact_keywords:
+        if keyword in title:
+            return True
+    combo_keywords = [
+        'listing', 'ico', 'adding', 'listed', 'added', 'listings',
+        'symbols', 'trading',
+    ]
+    for exchange in EXCHANGES:
+        for keyword in combo_keywords:
+            if exchange in title and keyword in title:
+                return True
+    return False
+
 def get_tickers(exchange):
     if exchange == 'poloniex':
-        res = requests.get('https://www.poloniex.com/public?command=returnTicker')
+        res = requests.get('https://www.poloniex.com/public?command=returnTicker', timeout=4)
         return json.loads(res.text).keys()
     if exchange == 'bittrex':
-        res = requests.get('https://bittrex.com/api/v1.1/public/getmarketsummaries')
+        res = requests.get('https://bittrex.com/api/v1.1/public/getmarketsummaries', timeout=4)
         return map(lambda x: x['MarketName'], json.loads(res.text)['result'])
     if exchange == 'liqui.io':
-        res = requests.get('https://api.liqui.io/api/3/info')
+        res = requests.get('https://api.liqui.io/api/3/info', timeout=4)
         return json.loads(res.text)['pairs'].keys()
     if exchange == 'tidex':
-        res = requests.get('https://api.tidex.com/api/3/info')
+        res = requests.get('https://api.tidex.com/api/3/info', timeout=4)
         return json.loads(res.text)['pairs'].keys()
 
 def diff_tickers(old_tickers, new_tickers):
@@ -75,7 +97,7 @@ def diff_posts(old_posts, new_posts):
     return new
 
 def get_reddit_rumors(forum):
-    res = requests.get('https://www.reddit.com/r/{}/new/.json'.format(forum), headers = {'User-agent': 'CryptoToad v0.1'})
+    res = requests.get('https://www.reddit.com/r/{}/new/.json'.format(forum), headers={'User-agent': 'CryptoToad v0.1'}, timeout=4)
     result = json.loads(res.text)
     if result.has_key('error') and result['error']:
         logging.warning('API error', result)
@@ -98,18 +120,27 @@ class Bot:
             url_ticker = url_ticker.upper()
         url = exchange['url'].format(url_ticker)
         for user_id in self.db:
-            self.bot.sendMessage(user_id, 'Detected ticker on {}! Symbol: {}, Url: {}'.format(exchange['name'], ticker, url))
+            self.bot.sendMessage(user_id, 'Detected ticker on {}! Symbol: {}, Url: {}'.format(exchange['name'], ticker, url), reply_markup=DEFAULT_REPLY_MARKUP)
 
     def notify_post(self, post, forum):
         text = 'New potential rumor on r/{}:\n\n{}'.format(forum, 'https://reddit.com{}'.format(post['permalink']))
         for user_id in self.db:
-            self.bot.sendMessage(user_id, text)
+            self.bot.sendMessage(user_id, text, reply_markup=DEFAULT_REPLY_MARKUP)
 
     def _on_message(self, msg):
         user_id = msg['from']['id']
         self.db[str(user_id)] = msg['from']
         self.db.sync()
         command = msg['text'].split(' ')
+        if len(command) > 0 and (command[0] == '/help' or command[0] == 'Help'):
+            text = """You can use the following commands:
+
+/rumors - See latest rumors from Reddit
+/tickers - List out all tickers being tracked
+/debug - Internal info for nerds
+            """
+            self.bot.sendMessage(user_id, text, reply_markup=DEFAULT_REPLY_MARKUP)
+            return
         if len(command) > 0 and command[0] == '/debug':
             text = 'Debug info:\n\n'
             for exchange in DEBUG_INFO['exchanges']:
@@ -118,17 +149,18 @@ class Bot:
                 duration = round(time.time() - info['last_check'])
                 text += '{}: last check = {}s ago, num tickers = {}\n'.format(exchange_info['name'], duration, len(info['tickers']))
             text += '\nUptime: {}h'.format(round(((time.time() - DEBUG_INFO['uptime'])/3600)*10)/10)
-            self.bot.sendMessage(user_id, text)
+            self.bot.sendMessage(user_id, text, reply_markup=DEFAULT_REPLY_MARKUP)
             return
-        if len(command) > 0 and command[0] == '/posts':
+        if len(command) > 0 and (command[0] == '/rumors' or command[0] == 'Rumors'):
             self.bot.sendMessage(user_id, 'I have read these posts recently:\n\n')
             for forum in DEBUG_INFO['reddit_forums']:
                 info = DEBUG_INFO['reddit_forums'][forum]
                 text = '\n'
-                for post in info['posts']:
-                    duration = round(time.time() - float(post['created']))
-                    text += '{}\n: {}\n\n'.format(post['title'], 'https://reddit.com{}'.format(post['permalink']))
-                self.bot.sendMessage(user_id, text)
+                for post in reversed(info['posts'][0:10]):
+                    duration = int(round((time.time() - float(post['created_utc'])) / 60))
+                    text = '{} minutes ago, {}\n: {}\n\n'.format(duration, post['title'], 'https://reddit.com{}'.format(post['permalink']))
+                    self.bot.sendMessage(user_id, text)
+            self.bot.sendMessage(user_id, '', reply_markup=DEFAULT_REPLY_MARKUP)
             return
         if len(command) > 0 and command[0] == '/tickers':
             self.bot.sendMessage(user_id, 'I know about the following tickers:')
@@ -136,7 +168,7 @@ class Bot:
                 exchange_info = EXCHANGES[exchange]
                 info = DEBUG_INFO['exchanges'][exchange]
                 text = '\n{}:\n{}\n'.format(exchange_info['name'], ', '.join(info['tickers']))
-                self.bot.sendMessage(user_id, text)
+                self.bot.sendMessage(user_id, text, reply_markup=DEFAULT_REPLY_MARKUP)
             return
         if len(command) > 2 and command[0] == '/simulate':
             exchange = command[1]
@@ -153,9 +185,9 @@ class Bot:
             exchange_names.append(exchange_info['name'])
         text = ''
         if len(exchange_names) > 0:
-            text = 'Hi there, I am currently tracking {} tickers in real-time on {} and {} as well as rumors on Reddit.\n'.format(total_tickers, ', '.join(exchange_names[0:-1]), exchange_names[-1])
-        text += '\nI will notify you instantly when I detect a new ticker!'
-        self.bot.sendMessage(user_id, text)
+            text = 'Hello Dear Sir, I am currently tracking {} tickers in real-time on {} and {} as well as rumors on Reddit.\n'.format(total_tickers, ', '.join(exchange_names[0:-1]), exchange_names[-1])
+        text += '\nI will notify you instantly when I detect a new ticker or hear a rumor! Type /help for a full list of commands'
+        self.bot.sendMessage(user_id, text, reply_markup=DEFAULT_REPLY_MARKUP)
 
 class TickerTracker:
 
@@ -178,17 +210,6 @@ class TickerTracker:
             self.tickers = new_tickers
             return True
         return False
-
-def post_is_interesting(post, forum):
-    title = post.get('title', '').lower()
-    keywords = ['exchange', 'listing', 'ico', 'new coin', 'listed', 'adding']
-    for keyword in keywords:
-        if keyword in title:
-            return True
-    for exchange in EXCHANGES:
-        if exchange in title:
-            return True
-    return False
 
 class RedditRumorTracker:
 

@@ -10,8 +10,7 @@ Dockerized Telegram bot for Crypto currency intelligence.
 
 ## Use
 
-Hit up @CryptoToadBot on Telegram.
-
+Hit up [@CryptoToadBot](https://t.me/CryptoToadBot) on Telegram.
 
 ## Build
 
