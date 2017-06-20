@@ -7,6 +7,7 @@ import time
 import telepot
 import shelve
 
+DB_FILE = 'data/bot.shelve.db'
 EXCHANGES = {
     'poloniex': {
         'name': 'Poloniex',
@@ -30,7 +31,8 @@ EXCHANGES = {
 }
 DEBUG_INFO = {
     'exchanges': {},
-    'reddit_forums': {}
+    'reddit_forums': {},
+    'uptime': time.time()
 }
 
 def get_tickers(exchange):
@@ -67,8 +69,7 @@ def get_reddit_rumors(forum):
     result = json.loads(res.text)
     if result.has_key('error') and result['error']:
         print('API error: ', result)
-        return []
-        #raise Exception('API Error: {}'.format(result['message']))
+        raise Exception('API Error: {}'.format(result['message']))
     return map(lambda x: x['data'], result['data']['children'])
 
 class Bot:
@@ -77,7 +78,7 @@ class Bot:
         self.bot = telepot.Bot(token)
         self.me = self.bot.getMe()
         self.bot.message_loop(self._on_message)
-        self.db = shelve.open('bot.shelve.db')
+        self.db = shelve.open(DB_FILE)
 
     def notify_ticker(self, ticker, exchange):
         url_ticker = ticker
@@ -106,6 +107,7 @@ class Bot:
                 info = DEBUG_INFO['exchanges'][exchange]
                 duration = round(time.time() - info['last_check'])
                 text += '{}: last check = {}s ago, num tickers = {}\n'.format(exchange_info['name'], duration, len(info['tickers']))
+            text += '\nUptime: {}h'.format(round(((time.time() - DEBUG_INFO['uptime'])/3600)*10)/10)
             self.bot.sendMessage(user_id, text)
             return
         if len(command) > 0 and command[0] == '/posts':
@@ -209,13 +211,12 @@ def run():
     i = 0
     while True:
         for item in trackers:
-            if 'reddit' in item and (i % 2) == 1:
+            if 'reddit' in item and (i % 10) != 0:
                 continue
-            trackers[item].check()
-            #try:
-            #    trackers[item].check()
-            #except:
-            #    print('Oops, received a little error when checking {} ({}), ignoring'.format(item, sys.exc_info()[0]))
+            try:
+                trackers[item].check()
+            except:
+                print('Oops, received a little error when checking {} ({}), ignoring'.format(item, sys.exc_info()[0]))
         i+= 1
         time.sleep(3)
 
