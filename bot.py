@@ -123,15 +123,21 @@ class Bot:
         url = exchange['url'].format(url_ticker)
         for user_id in self.db:
             logging.info('Sending ticker notification to {}'.format(user_id))
-            self.bot.sendMessage(user_id, 'Detected ticker on {}! Symbol: {}, Url: {}'.format(exchange['name'], ticker, url), reply_markup=DEFAULT_REPLY_MARKUP)
-            time.sleep(1)
+            try:
+                self.bot.sendMessage(user_id, 'Detected ticker on {}! Symbol: {}, Url: {}'.format(exchange['name'], ticker, url), reply_markup=DEFAULT_REPLY_MARKUP)
+                time.sleep(1)
+            except telepot.exception.BotWasBlockedError:
+                logging.info('User {} blocked the bot, skipping'.format(user_id))
 
     def notify_post(self, post, forum):
         text = 'New potential rumor on r/{}:\n\n{}'.format(forum,  'https://reddit.com{}'.format(post['permalink'].encode('utf-8')))
         for user_id in self.db:
             logging.info('Sending rumor notification to {}'.format(user_id))
-            self.bot.sendMessage(user_id, text, reply_markup=DEFAULT_REPLY_MARKUP)
-            time.sleep(1)
+            try:
+                self.bot.sendMessage(user_id, text, reply_markup=DEFAULT_REPLY_MARKUP)
+                time.sleep(1)
+            except telepot.exception.BotWasBlockedError:
+                logging.info('User {} blocked the bot, skipping'.format(user_id))
 
     def _on_message(self, msg):
         user_id = msg['from']['id']
