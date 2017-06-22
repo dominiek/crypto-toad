@@ -7,6 +7,7 @@ import time
 import telepot
 import shelve
 import logging
+import traceback
 
 DB_FILE = 'data/bot.shelve.db'
 EXCHANGES = {
@@ -121,12 +122,16 @@ class Bot:
             url_ticker = url_ticker.upper()
         url = exchange['url'].format(url_ticker)
         for user_id in self.db:
+            logging.info('Sending ticker notification to {}'.format(user_id))
             self.bot.sendMessage(user_id, 'Detected ticker on {}! Symbol: {}, Url: {}'.format(exchange['name'], ticker, url), reply_markup=DEFAULT_REPLY_MARKUP)
+            time.sleep(1)
 
     def notify_post(self, post, forum):
         text = 'New potential rumor on r/{}:\n\n{}'.format(forum,  'https://reddit.com{}'.format(post['permalink'].encode('utf-8')))
         for user_id in self.db:
+            logging.info('Sending rumor notification to {}'.format(user_id))
             self.bot.sendMessage(user_id, text, reply_markup=DEFAULT_REPLY_MARKUP)
+            time.sleep(1)
 
     def _on_message(self, msg):
         user_id = msg['from']['id']
@@ -204,7 +209,7 @@ class TickerTracker:
             'tickers': new_tickers
         }
         if len(new) > 0:
-            logging.info('New tickers on {}!'.format(self.exchange))
+            logging.info('New tickers on {}: {}!'.format(self.exchange, new))
             for ticker in new:
                 self.bot.notify_ticker(ticker, EXCHANGES[self.exchange])
             self.tickers = new_tickers
@@ -250,8 +255,13 @@ def run():
             try:
                 logging.info('Checking {} to see what\'s new'.format(item))
                 trackers[item].check()
+            except Exception as error:
+                logging.warning('Oops, received a little error when checking {} ({}, {}), ignoring'.format(item, error, error.message))
+                logging.warning(traceback.format_exc())
             except:
-                logging.warning('Oops, received a little error when checking {} ({}), ignoring'.format(item, sys.exc_info()[0]))
+                error = sys.exc_info()[0]
+                logging.warning('Oops, received a little error when checking {} ({}), ignoring'.format(item, error))
+                logging.warning(traceback.format_exc())
         i+= 1
         time.sleep(5)
 
