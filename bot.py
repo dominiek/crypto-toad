@@ -204,7 +204,7 @@ class TickerTracker:
             'tickers': new_tickers
         }
         if len(new) > 0:
-            logging.info('New tickers on {}!'.format(self.exchange), new)
+            logging.info('New tickers on {}!'.format(self.exchange))
             for ticker in new:
                 self.bot.notify_ticker(ticker, EXCHANGES[self.exchange])
             self.tickers = new_tickers
