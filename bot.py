@@ -138,6 +138,8 @@ class Bot:
                 time.sleep(1)
             except telepot.exception.BotWasBlockedError:
                 logging.info('User {} blocked the bot, skipping'.format(user_id))
+            except:
+                logging.info('Unknown error sending to user {}, skipping'.format(user_id))
 
     def _on_message(self, msg):
         user_id = msg['from']['id']
