@@ -261,7 +261,6 @@ def run():
             if 'reddit' in item and (i % 10) != 0:
                 continue
             try:
-                logging.info('Checking {} to see what\'s new'.format(item))
                 trackers[item].check()
             except Exception as error:
                 logging.warning('Oops, received a little error when checking {} ({}, {}), ignoring'.format(item, error, error.message))
@@ -271,6 +270,8 @@ def run():
                 logging.warning('Oops, received a little error when checking {} ({}), ignoring'.format(item, error))
                 logging.warning(traceback.format_exc())
         i+= 1
+        if (i % 100) == 0:
+            logging.info('I am still alive')
         time.sleep(5)
 
 run()
